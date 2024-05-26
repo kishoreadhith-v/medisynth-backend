@@ -1,4 +1,4 @@
-from Flask import Flask, jsonify, request
+from flask import Flask, jsonify, request
 
 def criticality_score():
     return jsonify({'message': 'Criticality Score'})

@@ -2,19 +2,32 @@ from flask import Flask, jsonify
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
+import traceback
 
-from diagnoser import outliers, analysis, predict
-from criticality import criticality_score, resource_availability, resource_allocation
-from patient import patient_history, appointment
+from .diagnoser import outliers, analysis, predict
+from .criticality import criticality_score, resource_availability, resource_allocation
+from .patient import patient_history, appointment
 
 load_dotenv()
-
+    
 app = Flask(__name__)
 
 
 # MongoDB Connection
 client = MongoClient(os.getenv('MONGO_URI'))
 db = client['dev-db']
+
+def error_stack(error):
+    stack_trace = traceback.format_exc()
+    response = {
+        'error': error,
+        'stack_trace': stack_trace
+    }
+    return jsonify(response), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return error_stack(str(e))
 
 @app.route('/')
 def home():
