@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 import os
 import traceback
 
-from .diagnoser import outliers, analysis, predict
-from .criticality import criticality_score, resource_availability, resource_allocation
-from .patient import patient_history, appointment
+from diagnoser import outliers, analysis, predict
+from criticality import criticality_score, resource_availability, resource_allocation
+from patient import patient_history, appointment
 
 load_dotenv()
     
@@ -80,3 +80,7 @@ def get_patient_history():
 @app.route('/patient/appointment', methods=['POST'])
 def get_appointment():
     return appointment()
+
+if __name__ == '__main__':
+    print("Starting Flask app...")
+    app.run(debug=True, host='0.0.0.0', port=5000)
