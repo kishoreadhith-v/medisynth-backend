@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.controllers.diagnose_controller import diagnose_patient
+from controllers.diagnose_controller import diagnose_patient
 
 diagnose_bp = Blueprint('diagnose', __name__, url_prefix='/patients/<patient_id>/lab_reports/<report_id>')
 

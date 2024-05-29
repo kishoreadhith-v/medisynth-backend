@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.controllers.anomaly_controller import get_anomalies
+from controllers.anomaly_controller import get_anomalies
 
 anomaly_bp = Blueprint('anomaly', __name__, url_prefix='/patients/<patient_id>/lab_reports/<report_id>')
 

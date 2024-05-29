@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.controllers.patient_controller import get_patient_details, get_lab_reports
+from controllers.patient_controller import get_patient_details, get_lab_reports
 
 patient_bp = Blueprint('patient', __name__, url_prefix='/patients')
 

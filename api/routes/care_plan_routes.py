@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.controllers.care_plan_controller import generate_care_plan
+from controllers.care_plan_controller import generate_care_plan
 
 care_plan_bp = Blueprint('care_plan', __name__, url_prefix='/patients/<patient_id>')
 
