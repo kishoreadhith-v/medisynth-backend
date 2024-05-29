@@ -1,27 +1,13 @@
 from flask import Flask
 from flask_cors import CORS
-from pymongo import MongoClient
-from dotenv import load_dotenv
-import os
+from api.routes.patient_routes import patient_bp
+from api.routes.anomaly_routes import anomaly_bp
+from api.routes.care_plan_routes import care_plan_bp
+from api.routes.diagnose_routes import diagnose_bp
 
-# Load environment variables
-load_dotenv()
-
-# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Configure MongoDB
-client = MongoClient(os.getenv('MONGO_URI'))
-db = client['dev-db']
-
-# Import blueprints
-from routes.patient_routes import patient_bp
-from routes.anomaly_routes import anomaly_bp
-from routes.care_plan_routes import care_plan_bp
-from routes.diagnose_routes import diagnose_bp
-
-# Register blueprints
 app.register_blueprint(patient_bp)
 app.register_blueprint(anomaly_bp)
 app.register_blueprint(care_plan_bp)
@@ -31,6 +17,9 @@ app.register_blueprint(diagnose_bp)
 def home():
     return 'Medisynth Backend'
 
-# Start the application
+@app.route('/about')
+def about():
+    return 'About'
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
