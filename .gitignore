@@ -3,6 +3,7 @@
 *.pyc
 __pycache__
 newenv/
+ml-tests/
 
 # Environments 
 .env 
