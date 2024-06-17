@@ -22,7 +22,9 @@ from api.routes.anomaly_routes import anomaly_bp
 from api.routes.care_plan_routes import care_plan_bp
 from api.routes.diagnose_routes import diagnose_bp
 
-# Register blueprints
+app = Flask(__name__)
+CORS(app)
+
 app.register_blueprint(patient_bp)
 app.register_blueprint(anomaly_bp)
 app.register_blueprint(care_plan_bp)
@@ -47,4 +49,4 @@ def handle_exception(e):
 
 # Start the application
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
