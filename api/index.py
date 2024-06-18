@@ -10,17 +10,17 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+# CORS(app)
 
 # Configure MongoDB
 client = MongoClient(os.getenv('MONGO_URI'))
 db = client['dev-db']
 
 # Import blueprints
-from api.routes.patient_routes import patient_bp
-from api.routes.anomaly_routes import anomaly_bp
-from api.routes.care_plan_routes import care_plan_bp
-from api.routes.diagnose_routes import diagnose_bp
+from .routes.patient_routes import patient_bp
+from .routes.anomaly_routes import anomaly_bp
+from .routes.care_plan_routes import care_plan_bp
+from .routes.diagnose_routes import diagnose_bp
 
 app = Flask(__name__)
 CORS(app)
