@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.controllers.diagnose_controller import predict_heart, heart_missing_columns
+from controllers.diagnose_controller import predict_heart, heart_missing_columns
 
 diagnose_bp = Blueprint('diagnose', __name__, url_prefix='/patients/<patient_id>')
 

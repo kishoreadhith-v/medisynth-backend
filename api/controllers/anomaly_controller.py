@@ -1,5 +1,5 @@
 from flask import jsonify
-from api.services.anomaly_service import detect_anomalies
+from services.anomaly_service import detect_anomalies
 
 def get_anomalies(patient_id, report_id):
     anomalies = detect_anomalies(patient_id, report_id)

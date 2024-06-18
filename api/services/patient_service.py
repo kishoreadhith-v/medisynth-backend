@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 import pymongo
 import os
-from api.services.gemini_service import extract_patient_info_and_anomalies
+from services.gemini_service import extract_patient_info_and_anomalies
 
 # MongoDB setup
 client = pymongo.MongoClient(os.getenv("MONGO_URI"))
