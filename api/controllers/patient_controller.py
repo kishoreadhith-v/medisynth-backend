@@ -1,5 +1,5 @@
 from flask import jsonify, request
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 import os
 import json
 from dotenv import load_dotenv
@@ -175,3 +175,20 @@ def convert_objectid_to_str(data):
         return str(data)
     else:
         return data
+
+
+def manual_input(patient_id, data):
+    # add data to the manual_data field, do not overwrite existing data
+    patient = patient_collection.find_one({'patient_id': patient_id})
+    if patient:
+        existing_manual_data = patient.get('manual_data', {})
+        update_query = {'patient_id': patient_id}
+        # if the key already exists, it will be overwritten
+        update_data = {'$set': {'manual_data': {**existing_manual_data, **data}}}
+        
+        # Using update_one to update the document
+        patient_collection.update_one(update_query, update_data)
+        
+        return get_patient_details(patient_id)
+    else:
+        return {'error': 'Patient not found'}

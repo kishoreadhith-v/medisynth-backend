@@ -3,5 +3,5 @@ pymongo
 python-dotenv
 pymupdf
 flask-cors
+pandas
 joblib
-scikit-learn==1.2.2

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.controllers.patient_controller import get_patient_details, get_lab_reports, upload_lab_report
+from api.controllers.patient_controller import get_patient_details, get_lab_reports, upload_lab_report, manual_input
 
 patient_bp = Blueprint('patient', __name__, url_prefix='/patients')
 
@@ -19,3 +19,8 @@ def upload_patient_lab_report(patient_id):
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     return jsonify(upload_lab_report(patient_id, file))
+
+@patient_bp.route('/<patient_id>/manual_input', methods=['POST'])
+def manual_input_patient(patient_id):
+    data = request.json
+    return jsonify(manual_input(patient_id, data))

@@ -4,6 +4,8 @@ import joblib
 import pandas as pd
 from dotenv import load_dotenv
 import os
+import numpy as np
+
 
 load_dotenv()
 
@@ -12,79 +14,194 @@ client = MongoClient(os.getenv('MONGO_URI'))
 db = client['dev-db']
 patient_collection = db['patients']
 
-def predict(patient_id):
-    # Fetch patient data from MongoDB
-    patient_data = patient_collection.find_one({"patient_id": patient_id})
-    if not patient_data:
-        return jsonify({"error": "Patient not found"}), 404
+# model columns
 
-    # Extract lab results and vitals
+heart_model_columns = {'Age': 'numerical', 'Sex': ['M', 'F'], 'ChestPainType': ['ATA', 'NAP', 'ASY', 'TA'], 'RestingBP': 'numerical', 'Cholesterol': 'numerical', 'FastingBS': 'numerical', 'RestingECG': ['Normal', 'ST', 'LVH'], 'MaxHR': 'numerical', 'ExerciseAngina': ['N', 'Y'], 'Oldpeak': 'numerical', 'ST_Slope': ['Up', 'Flat', 'Down']}
+stroke_model_columns = {'gender': ['Male', 'Female', 'Other'], 'age': 'numerical', 'hypertension': [0, 1], 'heart_disease': [1, 0], 'ever_married': ['Yes', 'No'], 'work_type': ['Private', 'Self-employed', 'Govt_job', 'children', 'Never_worked'], 'Residence_type': ['Urban', 'Rural'], 'avg_glucose_level': 'numerical', 'bmi': 'numerical', 'smoking_status': ['formerly smoked', 'never smoked', 'smokes', 'Unknown']}
+diabetes_model_columns = {'gender': ['Female', 'Male', 'Other'], 'age': 'numerical', 'hypertension': [0, 1], 'heart_disease': [1, 0], 'smoking_history': ['never', 'No Info', 'current', 'former', 'ever', 'not current'], 'bmi': 'numerical', 'HbA1c_level': 'numerical', 'blood_glucose_level': 'numerical'}
+
+# Functions
+def fetch_patient_data(patient_id):
+    patient_data = patient_collection.find_one({'patient_id': patient_id})
+    if not patient_data:
+        return None
+    # combine lab results, patint info and vitals
     lab_results = patient_data.get('lab_results', {})
     vitals = patient_data.get('vitals', {})
+    patient_info = patient_data.get('patient_info', {})
+    manual_data = patient_data.get('manual_data', {})
+    data = {**lab_results, **vitals, **patient_info, **manual_data}
+    return data
 
-    # Combine lab results and vitals
-    data = {**lab_results, **vitals}
 
-    # Prepare data for each model
-    heart_data = {
-        'Age': data.get('Age', 0),
-        'Sex': data.get('Sex', 'M'),
-        'ChestPainType': data.get('ChestPainType', 'ATA'),
-        'RestingBP': data.get('RestingBP', 0),
-        'Cholesterol': data.get('Cholesterol', 0),
-        'FastingBS': 0,  # Default as no fasting blood sugar info
-        'RestingECG': data.get('RestingECG', 'Normal'),
-        'MaxHR': data.get('MaxHR', 0),
-        'ExerciseAngina': data.get('ExerciseAngina', 'N'),
-        'Oldpeak': data.get('Oldpeak', 0),
-        'ST_Slope': data.get('ST_Slope', 'Up')
-    }
+def heart_missing_columns(patient_id):
+    patient_data = fetch_patient_data(patient_id)
+    if not patient_data:
+        return jsonify({'error': 'Patient not found'}), 304
+    patient_data['Age'] = patient_data.get('age', 0)
+    gender = patient_data['gender']
+    if gender == 'Male' or gender == 'male' or gender == 'M':
+        patient_data['Sex'] = 'M'
+    else:
+        patient_data['Sex'] = 'F'
 
-    stroke_data = {
-        'age': data.get('age', 0),
-        'hypertension': data.get('hypertension', 0),
-        'heart_disease': data.get('heart_disease', 0),
-        'ever_married': data.get('ever_married', 'No'),
-        'work_type': data.get('work_type', 'Private'),
-        'Residence_type': data.get('Residence_type', 'Urban'),
-        'avg_glucose_level': data.get('avg_glucose_level', 0),
-        'bmi': data.get('bmi', 0),
-        'smoking_status': data.get('smoking_status', 'never smoked')
-    }
+    # check if each column is present in the patient data, if category, check if the value is in the category list, if not, add to missing columns
+    missing_columns = {}
+    for column, value in heart_model_columns.items():
+        if column not in patient_data or patient_data[column] is None:
+            missing_columns[column] = value
+        elif isinstance(value, list) and patient_data[column] not in value:
+            missing_columns[column] = value
 
-    # Make predictions
-    predictions = []
-    heart_prediction, heart_confidence = make_prediction('heart_rf_model.pkl', heart_data)
-    stroke_prediction, stroke_confidence = make_prediction('stroke_rf_model.pkl', stroke_data)
+    return jsonify(missing_columns)
 
-    predictions.append({
-        "disease": "Heart Disease",
-        "prediction": heart_prediction,
-        "confidence": heart_confidence
-    })
-    predictions.append({
-        "disease": "Stroke",
-        "prediction": stroke_prediction,
-        "confidence": stroke_confidence
-    })
+def predict_heart(patient_id):
+    patient_data = fetch_patient_data(patient_id)
+    if not patient_data:
+        return jsonify({'error': 'Patient not found'}), 304
+    
+    patient_data['Age'] = patient_data.get('age', 0)
+    gender = patient_data.get('gender', 'M')
+    if gender in ['Male', 'male', 'M']:
+        patient_data['Sex'] = 'M'
+    else:
+        patient_data['Sex'] = 'F'
+    
+    # get only the columns needed for the model
+    heart_data = {key: patient_data[key] for key in heart_model_columns.keys()}
+    
+    # load the model
+    heart_model = joblib.load('models/heart_rf_model.pkl')
 
-    # Update the MongoDB document with predictions
-    patient_collection.update_one({"patient_id": patient_id}, {"$set": {"predictions": predictions}})
+    numerical_features = ['Age', 'RestingBP', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak']
+    categorical_features = ['Sex', 'ChestPainType', 'RestingECG', 'ExerciseAngina', 'ST_Slope']
 
-    return jsonify({"patient_id": patient_id, "predictions": predictions})
+    expected_columns = numerical_features + categorical_features
 
-def make_prediction(model_path, input_data):
-    # Load the model
-    model = joblib.load(f'models/{model_path}')
-    input_df = pd.DataFrame([input_data])
+    new_data = pd.DataFrame([heart_data])
+    new_data = new_data.reindex(columns=expected_columns, fill_value=0)
 
-    # Ensure the new data has the same columns as the training data
-    preprocess = model.named_steps['preprocessor']
-    expected_columns = preprocess.transformers_[0][2] + \
-        preprocess.transformers_[1][1].named_steps['onehot'].get_feature_names_out().tolist()
-    input_df = input_df.reindex(columns=expected_columns, fill_value=0)
+    prediction = heart_model.predict(new_data)
+    prediction_proba = heart_model.predict_proba(new_data)
 
-    prediction = model.predict(input_df)[0]
-    prediction_proba = model.predict_proba(input_df)[0]
+    # Convert numpy types to native Python types
+    heart_prediction = int(prediction[0]) if isinstance(prediction[0], np.integer) else prediction[0]
+    heart_confidence = float(max(prediction_proba[0])) if isinstance(max(prediction_proba[0]), np.floating) else max(prediction_proba[0])
 
-    return prediction, max(prediction_proba)
+    # update patient data with prediction
+    patient_collection.update_one(
+        {'patient_id': patient_id},
+        {'$set': {'heart_prediction': heart_prediction, 'heart_confidence': heart_confidence}}
+    )
+
+    return {'prediction': heart_prediction, 'confidence': heart_confidence}
+
+def stroke_missing_columns(patient_id):
+    patient_data = fetch_patient_data(patient_id)
+    if not patient_data:
+        return jsonify({'error': 'Patient not found'}), 304
+    
+    gender = patient_data.get('gender', 'Male')
+    if gender in ['Male', 'male', 'M']:
+        patient_data['gender'] = 'Male'
+    else:
+        patient_data['gender'] = 'Female'
+
+    missing_columns = {}
+    for column, value in stroke_model_columns.items():
+        if column not in patient_data or patient_data[column] is None:
+            missing_columns[column] = value
+        elif isinstance(value, list) and patient_data[column] not in value:
+            missing_columns[column] = value
+
+    return jsonify(missing_columns)
+
+def predict_stroke(patient_id):
+    patient_data = fetch_patient_data(patient_id)
+    if not patient_data:
+        return jsonify({'error': 'Patient not found'}), 304
+
+    # get only the columns needed for the model
+    stroke_data = {key: patient_data[key] for key in stroke_model_columns.keys()}
+    
+    # load the model
+    stroke_model = joblib.load('models/stroke_rf_model.pkl')
+
+    categorical_features=['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']
+    numerical_features=['age', 'hypertension', 'heart_disease', 'avg_glucose_level', 'bmi']
+
+    expected_columns = numerical_features + categorical_features
+
+    new_data = pd.DataFrame([stroke_data])
+
+    new_data = new_data.reindex(columns=expected_columns, fill_value=0)
+
+    prediction = stroke_model.predict(new_data)
+    prediction_proba = stroke_model.predict_proba(new_data)
+
+    # Convert numpy types to native Python types
+    stroke_prediction = int(prediction[0]) if isinstance(prediction[0], np.integer) else prediction[0]
+    stroke_confidence = float(max(prediction_proba[0])) if isinstance(max(prediction_proba[0]), np.floating) else max(prediction_proba[0])
+
+    # update patient data with prediction
+    patient_collection.update_one(
+        {'patient_id': patient_id},
+        {'$set': {'stroke_prediction': stroke_prediction, 'stroke_confidence': stroke_confidence}}
+    )
+
+    return {'prediction': stroke_prediction, 'confidence': stroke_confidence}
+
+def diabetes_missing_columns(patient_id):
+    patient_data = fetch_patient_data(patient_id)
+    if not patient_data:
+        return jsonify({'error': 'Patient not found'}), 304
+    
+    gender = patient_data.get('gender', 'Male')
+    if gender in ['Male', 'male', 'M']:
+        patient_data['gender'] = 'Male'
+    else:
+        patient_data['gender'] = 'Female'
+
+    missing_columns = {}
+    for column, value in diabetes_model_columns.items():
+        if column not in patient_data or patient_data[column] is None:
+            missing_columns[column] = value
+        elif isinstance(value, list) and patient_data[column] not in value:
+            missing_columns[column] = value
+
+    return jsonify(missing_columns)
+
+def predict_diabetes(patient_id):
+    patient_data = fetch_patient_data(patient_id)
+    if not patient_data:
+        return jsonify({'error': 'Patient not found'}), 304
+
+    # get only the columns needed for the model
+    diabetes_data = {key: patient_data[key] for key in diabetes_model_columns.keys()}
+    
+    # load the model
+    diabetes_model = joblib.load('models/diabetes_rf_model.pkl')
+
+    categorical_features=['gender', 'smoking_history']
+    numerical_features=['age', 'hypertension', 'heart_disease', 'bmi', 'HbA1c_level', 'blood_glucose_level']
+
+    expected_columns = numerical_features + categorical_features
+
+    new_data = pd.DataFrame([diabetes_data])
+
+    new_data = new_data.reindex(columns=expected_columns, fill_value=0)
+
+    prediction = diabetes_model.predict(new_data)
+    prediction_proba = diabetes_model.predict_proba(new_data)
+
+    # Convert numpy types to native Python types
+    diabetes_prediction = int(prediction[0]) if isinstance(prediction[0], np.integer) else prediction[0]
+    diabetes_confidence = float(max(prediction_proba[0])) if isinstance(max(prediction_proba[0]), np.floating) else max(prediction_proba[0])
+
+    # update patient data with prediction
+    patient_collection.update_one(
+        {'patient_id': patient_id},
+        {'$set': {'diabetes_prediction': diabetes_prediction, 'diabetes_confidence': diabetes_confidence}}
+    )
+
+    return {'prediction': diabetes_prediction, 'confidence': diabetes_confidence}
