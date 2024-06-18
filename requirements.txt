@@ -6,3 +6,4 @@ flask-cors
 pandas
 joblib
 google-generativeai
+scikit-learn==1.2.2
