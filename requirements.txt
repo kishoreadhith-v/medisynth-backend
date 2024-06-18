@@ -5,3 +5,4 @@ pymupdf
 flask-cors
 pandas
 joblib
+google-generativeai
