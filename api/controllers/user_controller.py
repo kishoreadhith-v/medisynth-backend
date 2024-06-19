@@ -99,4 +99,4 @@ def send_message(channel_id, message_text):
         print(f"Message successfully sent: {response['ts']}")
     except SlackApiError as e:
         print(f"Error sending message: {str(e)}")
-        return e
+        return {'slack api error': str(e)}
