@@ -41,7 +41,7 @@ def generate_care_plan(patient_id):
         response = model.generate_content([prompt])
 
         # Extract the generated care plan
-        response.candidates[0].content.parts[0].text.strip()
+        response = response.candidates[0].content.parts[0].text.strip()
 
         # update the patient's care plan
         careplan_collection.update_one(
