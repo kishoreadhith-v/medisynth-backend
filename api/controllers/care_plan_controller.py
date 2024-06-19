@@ -85,6 +85,23 @@ def get_meal_plan(data):
         prompt = f"""
             you're a professional nutrition expert and you are trained to write meal plans for patients with various diseases and complications. generate a 5 meal-a-day meal plan for a patient with the following info about them: 
             {data}
+            output example for format(note this is only for an example, the actual output should be based on the patient's info provided in the prompt):
+            [
+                {
+                "meal_type": "Breakfast",
+                "description": "Sprouts and Vegetable Cheela with Chicken Sausage & Coconut Chutney",
+                "food_items": [
+                    "1 cup Moong Dal (sprouts)",
+                    "1/2 cup chopped mixed vegetables (onions, tomatoes, peppers)",
+                    "1 tsp chopped ginger",
+                    "1/4 tsp turmeric powder",
+                    "Salt to taste",
+                    "2 tsp vegetable oil",
+                    "2 Chicken sausages (grilled or baked)",
+                    "1/2 cup Coconut chutney (made with coconut, cilantro, and green chilies)"
+                    ]
+                }, other 4 meals follow the same format 
+            ]
             give json output, formatted as an array of 5 meals, give only the json object for easier parsing and formatting
             """
         
