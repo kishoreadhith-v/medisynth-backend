@@ -6,6 +6,9 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 from bson import ObjectId
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+
 
 load_dotenv()
 
@@ -13,6 +16,9 @@ load_dotenv()
 client = MongoClient(os.getenv('MONGO_URI'))
 db = client['dev-db']
 user_collection = db['users']
+
+SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN')
+
 
 # create a new user
 def signup(data):
@@ -79,8 +85,18 @@ def delete_user():
         return {'message': 'User deleted successfully'}
     return {'error': 'User not found'}
 
-# add a notification to a user
-def add_notification(data):
-    email = get_jwt_identity()
-    user = user_collection.find
 
+def send_message(channel_id, message_text):
+    slack_client = WebClient(token=SLACK_BOT_TOKEN)
+    channel_id = channel_id
+    message_text = message_text
+
+    try:
+        response = slack_client.chat_postMessage(
+            channel=channel_id,
+            text=message_text
+        )
+        print(f"Message successfully sent: {response['ts']}")
+    except SlackApiError as e:
+        print(f"Error sending message: {e}")
+        return e
