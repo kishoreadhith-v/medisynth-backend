@@ -29,6 +29,7 @@ from routes.patient_routes import patient_bp
 from routes.care_plan_routes import care_plan_bp
 from routes.diagnose_routes import diagnose_bp
 from routes.forum_routes import forum_bp
+from routes.user_routes import user_bp
 
 app = Flask(__name__)
 
@@ -36,6 +37,7 @@ app.register_blueprint(patient_bp)
 app.register_blueprint(care_plan_bp)
 app.register_blueprint(diagnose_bp)
 app.register_blueprint(forum_bp)
+app.register_blueprint(user_bp)
 
 @app.route('/')
 def home():
