@@ -1,3 +1,4 @@
+import json
 import google.generativeai as genai
 from flask import jsonify, request
 from pymongo import MongoClient, UpdateOne
