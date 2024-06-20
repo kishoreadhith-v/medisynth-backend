@@ -256,7 +256,10 @@ def det_criticality_score(patient_id):
     # update the patient's criticality score
     patient_collection.update_one(
         {'patient_id': patient_id},
-        {'$set': {'criticality_score': result['criticality_score'], 'criticality_level': result['criticality_level']}}
+        {'$set': {'criticality_score': result['criticality_score']}}
     )
-
+    patient_collection.update_one(
+        {'patient_id': patient_id},
+        {'$set': {'criticality_level': result['criticality_level']}}
+    )
     return result
