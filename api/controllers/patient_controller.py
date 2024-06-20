@@ -356,3 +356,13 @@ def remove_patient(patient_id):
         return {'message': 'Patient removed successfully'}
     else:
         return {'error': 'Patient not found'}
+    
+# get all patients
+def get_all_patients():
+    patients = patient_collection.find()
+    return convert_objectid_to_str(list(patients))
+
+# get patients assigned to a staff, staff_id in staffs_assigned array
+def get_patients_assigned_to_staff(staff_id):
+    patients = patient_collection.find({'staffs_assigned': staff_id})
+    return convert_objectid_to_str(list(patients))

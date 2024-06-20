@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from controllers.patient_controller import get_patient_details, get_lab_reports, upload_lab_report, manual_input, get_criticality_score
+from controllers.patient_controller import get_patient_details, get_lab_reports, upload_lab_report, manual_input, get_criticality_score, get_all_patients, get_patients_assigned_to_staff
 
 patient_bp = Blueprint('patient', __name__, url_prefix='/patients')
 
@@ -28,3 +28,11 @@ def manual_input_patient(patient_id):
 @patient_bp.route('/<patient_id>/criticality_score', methods=['GET'])
 def get_criticality(patient_id):
     return jsonify(get_criticality_score(patient_id))
+
+@patient_bp.route('/all', methods=['GET'])
+def get_all():
+    return jsonify(get_all_patients())
+
+@patient_bp.route('/staff/<staff_id>', methods=['GET'])
+def get_assigned(staff_id):
+    return jsonify(get_patients_assigned_to_staff(staff_id))
