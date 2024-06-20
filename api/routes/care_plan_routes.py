@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from controllers.care_plan_controller import generate_care_plan, get_meal_plan
+from controllers.care_plan_controller import generate_care_plan, get_meal_plan, det_criticality_score
 
 care_plan_bp = Blueprint('care_plan', __name__, url_prefix='/patients')
 
@@ -10,3 +10,7 @@ def create_care_plan(patient_id):
 @care_plan_bp.route('/meal_plan', methods=['GET'])
 def meal_plan():
     return jsonify(get_meal_plan(request.json))
+
+@care_plan_bp.route('/<patient_id>/csllm', methods=['GET'])
+def get_criticality(patient_id):
+    return jsonify(det_criticality_score(patient_id))

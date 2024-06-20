@@ -138,6 +138,9 @@ def upload_lab_report(patient_id, file):
                 'anomalies': anomalies,
                 'vitals': vitals,
                 'lab_results': lab_results,
+                'staffs_assigned': [],
+                'resources_allocated': [],
+                'notifications': [],
                 'isEmergency': False,
                 'takenPills': True
             }

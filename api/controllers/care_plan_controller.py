@@ -134,3 +134,129 @@ def get_meal_plan(data):
 
     except Exception as e:
         return {'error': str(e)}
+
+# generate a criticality score for patient using a formula and gemini api
+def det_criticality_score(patient_id):
+    patient_data = patient_collection.find_one({'patient_id': patient_id})
+    if not patient_data:
+        return {'error': 'Patient not found'}
+    
+    prompt = f"""
+    You are a medical professional trained to calculate the criticality score for patients based on their medical history and current health status.
+    Please calculate the criticality score for the following patient:
+    {patient_data}
+    the criticality score must be calculated using the following formula:
+
+    ### Criticality Score Calculation
+
+    1. **Normalization Functions:**
+    - **Blood Pressure (BP):** `normalize_bp = (bp - 90) / (180 - 90) * 100`
+    - **Heart Rate (HR):** `normalize_hr = (hr - 60) / (200 - 60) * 100`
+    - **Binary Values:** `normalize_binary = 100 if positive else 0`
+    - **Laboratory Values:** `normalize_lab = (value - min_val) / (max_val - min_val) * 100`
+    - **Age:** `normalize_age = (age - 20) / (80 - 20) * 100`
+    - **Static Mappings:** `normalize_static = mapping[value]`
+
+    2. **Category Scores:**
+    - **Vital Signs (VS):**
+        vs_score = (
+        normalize_bp(bp) * 0.33 +
+        normalize_hr(hr) * 0.33 +
+        normalize_binary(exercise_angina) * 0.33
+        )
+    - **Lab Results (LR):**
+        lr_score = (
+        normalize_lab(hemoglobin, 12, 18) * 0.2 +
+        normalize_lab(platelet_count, 150, 450) * 0.2 +
+        normalize_lab(tlc, 4, 11) * 0.2 +
+        normalize_lab(rdw, 11.60, 14.00) * 0.2 +
+        normalize_lab(mpv, 6.5, 12.0) * 0.2
+        )
+    - **Medical History (MH):**
+        mh_score = (
+        normalize_lab(cholesterol, 150, 300) * 0.5
+        )
+    - **Symptoms (S):**
+        chest_pain_mapping = {{'ATA': 25, 'NAP': 50, 'ASY': 75, 'TA': 100}}
+        s_score = (
+        normalize_static(chest_pain_type, chest_pain_mapping) * 0.5 +
+        normalize_lab(oldpeak, 0, 6) * 0.5
+        )
+    - **Risk Factors (RF):**
+        rf_score = (
+        normalize_age(age) * 0.5 +
+        50  # Assuming 50 for male as default
+        )
+    - **Diagnostic Tests (DT):**
+        resting_ecg_mapping = {{'Normal': 0, 'Abnormal': 100}}
+        st_slope_mapping = {{'Up': 0, 'Flat': 50, 'Down': 100}}
+        dt_score = (
+        normalize_static(resting_ecg, resting_ecg_mapping) * 0.5 +
+        normalize_static(st_slope, st_slope_mapping) * 0.5
+        )
+    - **Functional Status (FS) and Medication Use (MU):**
+        fs_score = 0  # If no data is provided
+        mu_score = 0  # If no data is provided
+
+    3. **Weights:**
+    weights = {{
+        'VS': 20,
+        'LR': 15,
+        'MH': 10,
+        'S': 15,
+        'RF': 10,
+        'DT': 15,
+        'FS': 5,
+        'MU': 10
+    }}
+
+    4. **Weighted Sum:**
+    weighted_sum = (
+        (weights['VS'] * vs_score) +
+        (weights['LR'] * lr_score) +
+        (weights['MH'] * mh_score) +
+        (weights['S'] * s_score) +
+        (weights['RF'] * rf_score) +
+        (weights['DT'] * dt_score) +
+        (weights['FS'] * fs_score) +
+        (weights['MU'] * mu_score)
+    )
+
+    5. **Criticality Score:**
+    max_possible_score = 10000  # Max score if all components are at their highest (100)
+    criticality_score = (weighted_sum / max_possible_score) * 10
+
+    using this, generate a criticality score for the patient from 0 to 10, make it a float number with 2 decimal places
+    make the score sensible and based on the patient's data provided in the prompt and based on the scale of 0 to 10
+    give the output as a json object with the following format:
+    {{
+        "criticality_score": "the calculated criticality score",
+        "criticality_level": "the level of criticality based on the score (e.g., low (0 to 3), medium (3 to 7), high (7 to 10))"
+    }}
+    give only the json object for easier parsing and formatting, no need for markdown or any other formatting inside the json too
+    """
+    
+    # Interact with Gemini API
+    model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+    response = model.generate_content([prompt])
+
+    # Parse JSON from the response text using regex-based function
+    response_text = response.candidates[0].content.parts[0].text.strip()
+    print(f"Response from Gemini API: {response_text}")
+
+    if not response_text:
+        return {'error': 'Empty response from API'}
+    
+    # Use regex-based function to parse JSON response
+    result = split_and_load_ejson(response_text)
+
+    if not result:
+        return {'error': 'Failed to parse JSON response'}
+    
+    # update the patient's criticality score
+    patient_collection.update_one(
+        {'patient_id': patient_id},
+        {'$set': {'criticality_score': result['criticality_score'], 'criticality_level': result['criticality_level']}}
+    )
+
+    return result
