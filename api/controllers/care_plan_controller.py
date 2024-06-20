@@ -58,15 +58,31 @@ def generate_care_plan(patient_id):
         - patient education
         - follow-up
 
-
+        give the output as a json object with the following format:
+        {{
+            "diagnosis": "diagnosis brief",
+            "goals": "goals",
+            "interventions": "interventions",
+            "evaluation": "evaluation",
+            "patient_education": "patient education",
+            "follow_up": "follow-up"
+        }}
+        give only the json object for easier parsing and formatting, no need for markdown or any other formatting inside the json too
         """
 
         # Interact with Gemini API
         model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
         response = model.generate_content([prompt])
 
-        # Extract the generated care plan
-        response = response.candidates[0].content.parts[0].text.strip()
+        # Parse JSON from the response text using regex-based function
+        response_text = response.candidates[0].content.parts[0].text.strip()
+        print(f"Response from Gemini API: {response_text}")
+
+        if not response_text:
+            return {'error': 'Empty response from API'}
+
+        # Use regex-based function to parse JSON response
+        response = split_and_load_ejson(response_text)
 
         # update the patient's care plan
         careplan_collection.update_one(

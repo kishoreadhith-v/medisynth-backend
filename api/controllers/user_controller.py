@@ -27,9 +27,13 @@ def signup(data):
         'password': data.get('password'),
         'first_name': data.get('first_name'),
         'last_name': data.get('last_name'),
+        'staff_id': data.get('staff_id'),
         'created_at': datetime.datetime.now(),
         'role': data.get('role'),
         'notifications': [],
+        'chatrooms': [],
+        'patients': [],
+        'patients_assigned': []
     }
     new_user['password'] = hashlib.sha256(new_user['password'].encode("utf-8")).hexdigest()
     existing_user = user_collection.find_one({'email': new_user['email']})
@@ -97,6 +101,7 @@ def send_message(channel_id, message_text):
             text=message_text
         )
         print(f"Message successfully sent: {response['ts']}")
+        return {'message': 'Message sent successfully'}
     except SlackApiError as e:
         print(f"Error sending message: {str(e)}")
         return {'slack api error': str(e)}

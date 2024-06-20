@@ -1,11 +1,7 @@
 from flask import Blueprint, request, jsonify
-from controllers.diagnose_controller import predict_heart, heart_missing_columns, predict_diabetes, diabetes_missing_columns, predict_stroke, stroke_missing_columns
+from controllers.diagnose_controller import predict_heart, heart_missing_columns, predict_diabetes, diabetes_missing_columns, predict_stroke, stroke_missing_columns, get_all_missing_columns
 
 diagnose_bp = Blueprint('diagnose', __name__, url_prefix='/patients/<patient_id>')
-
-# @diagnose_bp.route('/<report_id>/diagnoses', methods=['POST'])
-# def diagnose(patient_id, report_id):
-#     return jsonify(diagnose_patient(patient_id, report_id))
 
 @diagnose_bp.route('/predict_heart', methods=['POST'])
 def predictions(patient_id):
@@ -30,3 +26,8 @@ def stroke_predictions(patient_id):
 @diagnose_bp.route('/stroke_missing_columns', methods=['GET'])
 def stroke_missing(patient_id):
     return stroke_missing_columns(patient_id)
+
+@diagnose_bp.route('/missing_columns', methods=['GET'])
+def all_missing(patient_id):
+    return jsonify(get_all_missing_columns(patient_id))
+

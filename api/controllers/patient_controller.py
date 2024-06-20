@@ -8,6 +8,7 @@ import google.generativeai as genai
 import re
 from bson import ObjectId
 
+from controllers.allocation_controller import deallocate_resource_from_patient, unassign_staff_from_patient
 load_dotenv()
 
 # MongoDB connection
@@ -136,7 +137,9 @@ def upload_lab_report(patient_id, file):
                 'patient_info': patient_info,
                 'anomalies': anomalies,
                 'vitals': vitals,
-                'lab_results': lab_results
+                'lab_results': lab_results,
+                'isEmergency': False,
+                'takenPills': True
             }
 
         # Store updated patient data in MongoDB
@@ -190,5 +193,163 @@ def manual_input(patient_id, data):
         patient_collection.update_one(update_query, update_data)
         
         return get_patient_details(patient_id)
+    else:
+        return {'error': 'Patient not found'}
+
+
+# cricality score
+
+def calculate_criticality_score(patient_data):
+    # Define weights for each category based on clinical judgment
+    weights = {
+        'VS': 20,
+        'LR': 15,
+        'MH': 10,
+        'S': 15,
+        'RF': 10,
+        'DT': 15,
+        'FS': 5,
+        'MU': 10
+    }
+
+    # Normalization functions for each input variable
+    def normalize_bp(bp):
+        return (bp - 90) / (180 - 90) * 10
+
+    def normalize_hr(hr):
+        return (hr - 60) / (200 - 60) * 10
+
+    def normalize_binary(value, positive='Y'):
+        return 10 if value == positive else 0
+
+    def normalize_lab(value, min_val, max_val):
+        if min_val == max_val:
+            return 0
+        return (value - min_val) / (max_val - min_val) * 10
+
+    def normalize_age(age):
+        return (age - 20) / (80 - 20) * 10
+
+    def normalize_static(value, mapping):
+        return mapping.get(value, 0)
+
+    # Get values safely from the patient_data with default fallbacks
+    manual_data = patient_data.get('manual_data', {})
+    lab_results = patient_data.get('lab_results', {})
+    vitals = patient_data.get('vitals', {})
+    anomalies = patient_data.get('anomalies', [])
+    patient_info = patient_data.get('patient_info', {})
+
+    # Vital Signs (VS)
+    vs_score = (
+        normalize_bp(manual_data.get('RestingBP', 120)) * 0.33 +
+        normalize_hr(manual_data.get('MaxHR', 100)) * 0.33 +
+        normalize_binary(manual_data.get('ExerciseAngina', 'N')) * 0.33
+    )
+
+    # Lab Results (LR)
+    hemoglobin = lab_results.get('Hemoglobin', 15)
+    platelet_count = lab_results.get('Platelet Count', 200)
+    tlc = lab_results.get('Total Leukocyte Count  (TLC)', 8)
+    rdw = next((item['result'] for item in anomalies if item['test_name'] == 'Red Cell Distribution Width (RDW)'), 12)
+    mpv = next((item['result'] for item in anomalies if item['test_name'] == 'Mean Platelet Volume'), 10)
+
+    lr_score = (
+        normalize_lab(hemoglobin, 12, 18) * 0.2 +
+        normalize_lab(platelet_count, 150, 450) * 0.2 +
+        normalize_lab(tlc, 4, 11) * 0.2 +
+        normalize_lab(rdw, 11.60, 14.00) * 0.2 +
+        normalize_lab(mpv, 6.5, 12.0) * 0.2
+    )
+
+    # Medical History (MH)
+    cholesterol = manual_data.get('Cholesterol', 200)
+    mh_score = (
+        normalize_lab(cholesterol, 150, 300) * 0.5 +
+        0  # FastingBS is not provided in numerical form
+    )
+
+    # Symptoms (S)
+    chest_pain_mapping = {'ATA': 25, 'NAP': 50, 'ASY': 75, 'TA': 100}
+    chest_pain_type = vitals.get('ChestPainType', 'ATA')
+    oldpeak = manual_data.get('Oldpeak', 0)
+
+    s_score = (
+        normalize_static(chest_pain_type, chest_pain_mapping) * 0.5 +
+        normalize_lab(oldpeak, 0, 6) * 0.5
+    )
+
+    # Risk Factors (RF)
+    age = patient_info.get('age', 50)
+    rf_score = (
+        normalize_age(age) * 0.5 +
+        50  # Assuming 50 for Male as mentioned
+    )
+
+    # Diagnostic Tests (DT)
+    resting_ecg_mapping = {'Normal': 0, 'Abnormal': 100}
+    st_slope_mapping = {'Up': 0, 'Flat': 50, 'Down': 100}
+    resting_ecg = manual_data.get('RestingECG', 'Normal')
+    st_slope = manual_data.get('ST_Slope', 'Up')
+
+    dt_score = (
+        normalize_static(resting_ecg, resting_ecg_mapping) * 0.5 +
+        normalize_static(st_slope, st_slope_mapping) * 0.5
+    )
+
+    # Functional Status (FS)
+    fs_score = 0  # No data provided
+
+    # Medication Use (MU)
+    mu_score = 0  # No data provided
+
+    # Calculate the final criticality score
+    weighted_sum = (
+        (weights['VS'] * vs_score) +
+        (weights['LR'] * lr_score) +
+        (weights['MH'] * mh_score) +
+        (weights['S'] * s_score) +
+        (weights['RF'] * rf_score) +
+        (weights['DT'] * dt_score) +
+        (weights['FS'] * fs_score) +
+        (weights['MU'] * mu_score)
+    )
+
+    # Normalize the weighted sum to a 0-10 scale
+    max_possible_score = sum(weights.values())  # Max score if all components are at their highest (100)
+    criticality_score = (weighted_sum / max_possible_score)
+
+    return criticality_score
+
+
+def get_criticality_score(patient_id):
+    patient_data = patient_collection.find_one({'patient_id': patient_id})
+    if patient_data:
+        criticality_score = calculate_criticality_score(patient_data)
+        # update the patient's criticality score
+        patient_collection.update_one(
+            {'patient_id': patient_id},
+            {'$set': {'criticality_score': criticality_score}}
+        )
+        return {'criticality_score': criticality_score}
+    else:
+        return {'error': 'Patient not found'}
+    
+
+# remove patient from the system, deallocate resources and staffs assigned
+def remove_patient(patient_id):
+    # deallocate resources
+    patient = patient_collection.find_one({'patient_id': patient_id})
+    if patient:
+        resources_allocated = patient.get('resources_allocated', [])
+        for resource_id in resources_allocated:
+            deallocate_resource_from_patient(patient_id, resource_id)
+        # unassign staffs
+        staffs_assigned = patient.get('staffs_assigned', [])
+        for staff_id in staffs_assigned:
+            unassign_staff_from_patient(patient_id, staff_id)
+        # delete the patient
+        patient_collection.delete_one({'patient_id': patient_id})
+        return {'message': 'Patient removed successfully'}
     else:
         return {'error': 'Patient not found'}

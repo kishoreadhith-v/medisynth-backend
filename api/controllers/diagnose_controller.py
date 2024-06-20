@@ -53,7 +53,7 @@ def heart_missing_columns(patient_id):
         elif isinstance(value, list) and patient_data[column] not in value:
             missing_columns[column] = value
 
-    return jsonify(missing_columns)
+    return missing_columns
 
 def predict_heart(patient_id):
     patient_data = fetch_patient_data(patient_id)
@@ -91,7 +91,7 @@ def predict_heart(patient_id):
     # update patient data with prediction
     patient_collection.update_one(
         {'patient_id': patient_id},
-        {'$set': {'heart_prediction': heart_prediction, 'heart_confidence': heart_confidence}}
+        {'$set': {'heart_failure_prediction': heart_prediction, 'heart_failure_prediction_confidence': heart_confidence}}
     )
 
     return {'prediction': heart_prediction, 'confidence': heart_confidence}
@@ -114,7 +114,7 @@ def stroke_missing_columns(patient_id):
         elif isinstance(value, list) and patient_data[column] not in value:
             missing_columns[column] = value
 
-    return jsonify(missing_columns)
+    return missing_columns
 
 def predict_stroke(patient_id):
     patient_data = fetch_patient_data(patient_id)
@@ -146,7 +146,7 @@ def predict_stroke(patient_id):
     # update patient data with prediction
     patient_collection.update_one(
         {'patient_id': patient_id},
-        {'$set': {'stroke_prediction': stroke_prediction, 'stroke_confidence': stroke_confidence}}
+        {'$set': {'stroke_prediction': stroke_prediction, 'stroke_prediction_confidence': stroke_confidence}}
     )
 
     return {'prediction': stroke_prediction, 'confidence': stroke_confidence}
@@ -169,7 +169,7 @@ def diabetes_missing_columns(patient_id):
         elif isinstance(value, list) and patient_data[column] not in value:
             missing_columns[column] = value
 
-    return jsonify(missing_columns)
+    return missing_columns
 
 def predict_diabetes(patient_id):
     patient_data = fetch_patient_data(patient_id)
@@ -205,3 +205,19 @@ def predict_diabetes(patient_id):
     )
 
     return {'prediction': diabetes_prediction, 'confidence': diabetes_confidence}
+
+
+def get_all_missing_columns(patient_id):
+    heart_missing_columns = heart_missing_columns(patient_id)
+    stroke_missing_columns = stroke_missing_columns(patient_id)
+    diabetes_missing_columns = diabetes_missing_columns(patient_id)
+    missing_columns = {**heart_missing_columns, **stroke_missing_columns, **diabetes_missing_columns}
+    return missing_columns
+
+# predict all diseases sequentially
+def predict_all(patient_id):
+    heart_prediction = predict_heart(patient_id)
+    stroke_prediction = predict_stroke(patient_id)
+    diabetes_prediction = predict_diabetes(patient_id)
+    return {'heart': heart_prediction, 'stroke': stroke_prediction, 'diabetes': diabetes_prediction}
+

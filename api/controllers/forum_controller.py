@@ -15,7 +15,6 @@ forum_collection = db['forum']
 # create a new post
 def create_post(data):
     post = {
-        'forum_id': data.get('forum_id'),
         'title': data.get('title'),
         'content': data.get('content'),
         'author': data.get('author'),
@@ -24,21 +23,24 @@ def create_post(data):
         'upvotes': 0,
     }
     result = forum_collection.insert_one(post)
-    return str(result.inserted_id)
+    if result:
+        return {'message': 'Post created successfully', 'post_id': str(result.inserted_id)}
+    return {'error': 'Post creation failed'}
 
 # get posts by forum id, select 15 random posts from the collection each time, but make sure that have already been selected are not selected again
 def get_posts(selected_posts):
     posts = []
-    for post in forum_collection.find({'forum_id': selected_posts}):
-        posts.append({
-            'id': str(post['_id']),
-            'title': post['title'],
-            'content': post['content'],
-            'author': post['author'],
-            'created_at': post['created_at'],
-            'comments': post['comments'],
-            'upvotes': post['upvotes']
-        })
+    for post in forum_collection.aggregate([{'$sample': {'size': 15}}]):
+        if str(post['_id']) not in selected_posts:
+            posts.append({
+                'id': str(post['_id']),
+                'title': post['title'],
+                'content': post['content'],
+                'author': post['author'],
+                'created_at': post['created_at'],
+                'comments': post['comments'],
+                'upvotes': post['upvotes']
+            })
     return posts
 
 #comment on a post
