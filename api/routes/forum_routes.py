@@ -8,7 +8,7 @@ def create():
     data = request.json
     return jsonify(create_post(data))
 
-@forum_bp.route('/get_posts', methods=['GET'])
+@forum_bp.route('/get_posts', methods=['POST'])
 def get():
     selected_posts = request.json
     return jsonify(get_posts(selected_posts=selected_posts))
