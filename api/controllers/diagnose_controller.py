@@ -208,10 +208,10 @@ def predict_diabetes(patient_id):
 
 
 def get_all_missing_columns(patient_id):
-    heart_missing_columns = heart_missing_columns(patient_id)
-    stroke_missing_columns = stroke_missing_columns(patient_id)
-    diabetes_missing_columns = diabetes_missing_columns(patient_id)
-    missing_columns = {**heart_missing_columns, **stroke_missing_columns, **diabetes_missing_columns}
+    heart_columns = heart_missing_columns(patient_id)
+    stroke_columns = stroke_missing_columns(patient_id)
+    diabetes_columns = diabetes_missing_columns(patient_id)
+    missing_columns = {**heart_columns, **stroke_columns, **diabetes_columns}
     return missing_columns
 
 # predict all diseases sequentially
