@@ -16,7 +16,7 @@ def create_staffs_assigned():
     return create_staffs_assigned_field()
 
 @allocation_bp.route('/create_resource', methods=['POST'])
-def create_resource():
+def create_res():
     return create_resource(request.json)
 
 @allocation_bp.route('/resources', methods=['GET'])
