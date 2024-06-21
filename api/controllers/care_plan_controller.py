@@ -263,3 +263,73 @@ def det_criticality_score(patient_id):
         {'$set': {'criticality_level': result['criticality_level']}}
     )
     return result
+
+# ask gemini a question based on a patient's data
+def ask_patient_specific(patient_id, query):
+    patient_data = patient_collection.find_one({'patient_id': patient_id})
+    if not patient_data:
+        return {'error': 'Patient not found'}
+    
+    prompt = f"""
+    You are a medical professional trained to answer medical questions based on a patient's specific information.
+    Please answer the following question based on the patient's data provided below:
+    {patient_data}
+    Question: {query}
+    Provide a detailed and accurate response to the question.
+    give the output as a json object with the following format:
+    {{
+        "answer": "the detailed answer to the question"
+    }}
+    give only the json object for easier parsing and formatting, no need for markdown or any other formatting inside the json too
+    """
+
+    # Interact with Gemini API
+    model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+    response = model.generate_content([prompt])
+
+    # Parse JSON from the response text using regex-based function
+    response_text = response.candidates[0].content.parts[0].text.strip()
+    print(f"Response from Gemini API: {response_text}")
+
+    if not response_text:
+        return {'error': 'Empty response from API'}
+    
+    # Use regex-based function to parse JSON response
+    result = split_and_load_ejson(response_text)
+    if result == None:
+        result = json.loads(response_text)
+
+    return result
+
+# ask gemini a general medical question
+def ask_general(query):
+    prompt = f"""
+    You are a medical professional trained to answer general medical questions.
+    Please answer the following general medical question:
+    {query}
+    Provide a detailed and accurate response to the question.
+    give the output as a json object with the following format:
+    {{
+        "answer": "the detailed answer to the question"
+    }}
+    give only the json object for easier parsing and formatting, no need for markdown or any other formatting inside the json too
+    """
+
+    # Interact with Gemini API
+    model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+    response = model.generate_content([prompt])
+
+    # Parse JSON from the response text using regex-based function
+    response_text = response.candidates[0].content.parts[0].text.strip()
+    print(f"Response from Gemini API: {response_text}")
+
+    if not response_text:
+        return {'error': 'Empty response from API'}
+    
+    # Use regex-based function to parse JSON response
+    result = json.loads(response_text)
+
+    return result
+
+
+

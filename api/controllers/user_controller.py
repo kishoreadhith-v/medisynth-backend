@@ -105,3 +105,30 @@ def send_message(channel_id, message_text):
     except SlackApiError as e:
         print(f"Error sending message: {str(e)}")
         return {'slack api error': str(e)}
+    
+
+# add a notification to a user
+def add_notification(staff_id, notification_block):
+    user_collection.update_one(
+        {'staff_id': staff_id},
+        {'$push': {'notifications': notification_block}}
+    )
+    return {'message': 'notification added successfully'}
+
+
+# get all notifications for a user
+def get_notifications(staff_id):
+    user = user_collection.find_one({'staff_id': staff_id})
+    if user:
+        return user['notifications']
+    return {'error': 'User not found'}
+
+
+# delete a notification for a user
+def delete_notification(staff_id, notification_id):
+    user_collection.update_one(
+        {'staff_id': staff_id},
+        {'$pull': {'notifications': {'_id': ObjectId(notification_id)}}}
+    )
+    return {'message': 'notification deleted successfully'}
+
