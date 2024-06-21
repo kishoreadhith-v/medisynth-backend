@@ -46,6 +46,7 @@ def create_resource(data):
         'description': data.get('description'),
         'type': data.get('type'),
         'total': data.get('total'),
+        'icon': data.get('icon'),
         'available': data.get('available'), 
         'allocated_patients': []
     }
@@ -124,3 +125,19 @@ def unassign_staff_from_patient(patient_id, staff_id):
     user_collection.update_one({'user_id': staff_id}, {'$pull': {'patients_assigned': patient_id}})
     patient_collection.update_one({'patient_id': patient_id}, {'$pull': {'staffs_assigned': staff_id}})
     return jsonify({'message': 'Staff unassigned from patient successfully'}), 200
+
+# get all the resources allocated to a patient
+def get_resources_allocated_to_patient(patient_id):
+    patient = patient_collection.find_one({'patient_id': patient_id})
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 304
+    resources = list(resource_collection.find({'resource_id': {'$in': patient.get('resources_allocated')}}, {'_id': 0}))
+    return jsonify(resources), 200
+
+# get all the staffs assigned to a patient
+def get_staffs_assigned_to_patient(patient_id):
+    patient = patient_collection.find_one({'patient_id': patient_id})
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 304
+    staffs = list(user_collection.find({'staff_id': {'$in': patient.get('staffs_assigned')}}, {'_id': 0}))
+    return jsonify(staffs), 200

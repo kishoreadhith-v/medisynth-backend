@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from controllers.allocation_controller import create_resources_allocated_field, create_patients_assigned_field, create_staffs_assigned_field, create_resource, get_all_resources, get_resource_by_id, allocate_resource_to_patient, deallocate_resource_from_patient, assign_staff_to_patient, unassign_staff_from_patient
+from controllers.allocation_controller import create_resources_allocated_field, create_patients_assigned_field, create_staffs_assigned_field, create_resource, get_all_resources, get_resource_by_id, allocate_resource_to_patient, deallocate_resource_from_patient, assign_staff_to_patient, unassign_staff_from_patient, get_resources_allocated_to_patient, get_staffs_assigned_to_patient
 
 allocation_bp = Blueprint('allocation', __name__, url_prefix='/allocation')
 
@@ -42,3 +42,11 @@ def assign_staff(patient_id, staff_id):
 @allocation_bp.route('/unassign_staff_from_patient/<patient_id>/<staff_id>', methods=['POST'])
 def unassign_staff(patient_id, staff_id):
     return unassign_staff_from_patient(patient_id, staff_id)
+
+@allocation_bp.route('/resources_allocated_to_patient/<patient_id>', methods=['GET'])
+def resources_allocated(patient_id):
+    return get_resources_allocated_to_patient(patient_id)
+
+@allocation_bp.route('/staffs_assigned_to_patient/<patient_id>', methods=['GET'])
+def staffs_assigned(patient_id):
+    return get_staffs_assigned_to_patient(patient_id)
